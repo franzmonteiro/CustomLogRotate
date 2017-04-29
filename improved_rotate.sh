@@ -1,5 +1,5 @@
 #!/bin/bash
-
+TODAY=$(date +%Y%m%d)
 DESTINATION_DIRECTORY=
 while getopts d: opt
 do
@@ -13,24 +13,35 @@ do
 done
 shift `expr $OPTIND - 1`
 
+if [ -d DESTINATION_DIRECTORY ]; then
+    echo "The following destination directory does not exist: '$DESTINATION_DIRECTORY'"
+    echo "Execution aborted."
+    exit 1
+fi
+
 LOG_FILES=$@
 echo "DESTINATION_DIRECTORY = $DESTINATION_DIRECTORY"
 echo "LOG_FILES = $LOG_FILES"
-#exit 0
 
 for LOG_FILE in $LOG_FILES
 do
-    COUNT=1
+    if [ ! -f $LOG_FILE ]; then
+        echo "'$LOG_FILE' does not exist."
+    fi
+    
+    ROTATION_NUMBER=1
     # Infinite loop
     while :
     do
-        # Define rotated file name.
-        ROTATED_FILENAME=$LOG_FILE.gz.$COUNT
+        # Define rotated filename.
+        ROTATED_FILENAME="$LOG_FILE.$TODAY.$ROTATION_NUMBER"
+        COMPLETE_DESTINATION="$DESTINATION_DIRECTORY/$ROTATED_FILENAME"
+        COMPLETE_DESTINATION=$(echo $COMPLETE_DESTINATION | sed 's_//_/_')
+        echo "COMPLETE_DESTINATION = $COMPLETE_DESTINATION"
         if [ ! -f $ROTATED_FILENAME ]; then
             break
         fi
-        $(( COUNT++ ))
+        $(( ROTATION_NUMBER++ ))
     done
-    gzip -9v $LOG_FILE > $ROTATED_FILENAME
-    echo $LOG_FILE
+    gzip -9cv $LOG_FILE > $COMPLETE_DESTINATION
 done
