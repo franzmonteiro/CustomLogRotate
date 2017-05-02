@@ -1,6 +1,7 @@
 #!/bin/bash
 
-MANUAL_ROTATIONS="/home/lmonteiro/Documents/manual_rotations.log"
+MANUAL_ROTATIONS_DIR="/home/lmonteiro/Documents"
+MANUAL_ROTATIONS_LOG="/manual_rotations.log"
 TODAY=`date +%Y%m%d`
 DESTINATION_DIRECTORY=""
 
@@ -8,12 +9,16 @@ function usage() {
     echo "usage: $0 [-d destination directory] [file ...]"
 }
 
+function log_message() {
+    echo -e "[$(date '+%Y.%m.%d %H:%M:%S') $1] $2" | tee -a $MANUAL_ROTATIONS_LOG
+}
+
 function log_error() {
-    echo -e "[$(date '+%Y.%m.%d %H:%M:%S') ERROR] $@" | tee -a $MANUAL_ROTATIONS
+    log_message "ERROR" $1
 }
 
 function log_info() {
-    echo -e "[$(date '+%Y.%m.%d %H:%M:%S') INFO] $@" | tee -a $MANUAL_ROTATIONS
+    log_message "INFO" $1
 }
 
 while getopts d: opt
@@ -28,6 +33,7 @@ do
 done
 shift `expr $OPTIND - 1`
 
+# If the destination directory was defined by the user.
 if [ -n "$DESTINATION_DIRECTORY" ]; then
     if ! [ -d "$DESTINATION_DIRECTORY" ]; then
         log_error "The following destination directory does not exist: $DESTINATION_DIRECTORY"
@@ -43,13 +49,31 @@ if [ -n "$DESTINATION_DIRECTORY" ]; then
 fi
 
 if [ "$#" -lt "1" ]; then
-    usage
+    usage #TODO: Correct it.
     exit 1
 fi
 
 #TODO: Test it.
-if ! [ -f $MANUAL_ROTATIONS ]; then
-    touch $MANUAL_ROTATIONS
+if ! [ -d $MANUAL_ROTATIONS_DIR ]; then
+    echo "$MANUAL_ROTATIONS_DIR does not exist. I will try to create it."
+    mkdir -p $MANUAL_ROTATIONS_DIR
+    if [ "$?" -ne "0" ]; then
+        echo -e "It was not possible to create $MANUAL_ROTATIONS_DIR"
+        echo "Execution aborted."
+        exit 1
+    fi
+    echo "$MANUAL_ROTATIONS_DIR created!"
+fi
+
+if ! [ -f $MANUL_ROTATIONS_LOG ]; then
+    echo "$MANUAL_ROTATIONS_LOG does not exist. I will try to create it."
+    touch $MANUAL_ROTATIONS_LOG
+    if [ "$?" -ne "0" ]; then
+        echo "It was not possible to create $MANUAL_ROTATIONS_LOG"
+        echo "Execution aborted."
+        exit 1
+    fi
+    echo "$MANUAL_ROTATIONS_LOG created!"
 fi
 
 FILES=$@
@@ -65,7 +89,7 @@ do
     fi
     
     # Check if file type is text.
-    file -b "$FILE" | grep text > /dev/null
+    file -b "$FILE" | grep "text" > /dev/null
     if [ "$?" -ne "0" ]; then
         log_error "$FILE's type is not text, or it is empty."
         continue
