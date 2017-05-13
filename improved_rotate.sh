@@ -4,7 +4,8 @@ MANUAL_ROTATIONS_DIR="/home/$USER/Documents"
 MANUAL_ROTATIONS_LOG=$MANUAL_ROTATIONS_DIR"/manual_rotations.log"
 TODAY=`date +%Y%m%d`
 DESTINATION_DIRECTORY=""
-USAGE="usage: $0 [-d destination directory] [file ...]"
+SKIP_FILE_COMPRESSION="off"
+USAGE="usage: $0 -s [-d destination directory] [file ...]"
 
 function log_message() {
     echo -e "[$(date '+%Y.%m.%d %H:%M:%S') $1] $2" | tee -a $MANUAL_ROTATIONS_LOG
@@ -18,13 +19,14 @@ function log_info() {
     log_message "INFO" "$@"
 }
 
-while getopts d: opt
+while getopts sd: opt
 do
     case "$opt" in
+        s)    SKIP_FILE_COMPRESSION="on";;
         d)    DESTINATION_DIRECTORY="$OPTARG";;
         \?)   # unknown flag
               echo >&2 \
-              $USAGE
+              "$USAGE"
               exit 1;;
     esac
 done
@@ -32,7 +34,7 @@ shift `expr $OPTIND - 1`
 
 # If no arguments were supplied to the script.
 if [ "$#" -lt "1" ]; then
-    echo $USAGE
+    echo "$USAGE"
     exit 1
 fi
 
@@ -134,12 +136,18 @@ do
     fi
     log_info "File truncated successfully!"
     
+    if [ "$SKIP_FILE_COMPRESSION" = "on" ]; then
+        log_info "File compression skipped."
+        continue
+    fi
+    
     log_info "Compressing file: $NEW_FILE"
     gzip -9v "$NEW_FILE"
     if [ "$?" -ne "0" ]; then
         log_error "An error occurred while compressing $NEW_FILE"
         exit 1
     fi
+    log_info "File compressed successfully!"
 done
 log_info "Execution finished."
 #TODO: Print statistics.
