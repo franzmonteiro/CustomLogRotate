@@ -1,24 +1,21 @@
 #!/bin/bash
 
-MANUAL_ROTATIONS_DIR="/home/lmonteiro/Documents"
-MANUAL_ROTATIONS_LOG="/manual_rotations.log"
+MANUAL_ROTATIONS_DIR="/home/$USER/Documents"
+MANUAL_ROTATIONS_LOG=$MANUAL_ROTATIONS_DIR"/manual_rotations.log"
 TODAY=`date +%Y%m%d`
 DESTINATION_DIRECTORY=""
-
-function usage() {
-    echo "usage: $0 [-d destination directory] [file ...]"
-}
+USAGE="usage: $0 [-d destination directory] [file ...]"
 
 function log_message() {
     echo -e "[$(date '+%Y.%m.%d %H:%M:%S') $1] $2" | tee -a $MANUAL_ROTATIONS_LOG
 }
 
 function log_error() {
-    log_message "ERROR" $1
+    log_message "ERROR" "$@"
 }
 
 function log_info() {
-    log_message "INFO" $1
+    log_message "INFO" "$@"
 }
 
 while getopts d: opt
@@ -27,11 +24,17 @@ do
         d)    DESTINATION_DIRECTORY="$OPTARG";;
         \?)   # unknown flag
               echo >&2 \
-              #TODO: Print usage.
+              echo $USAGE \
               exit 1;;
     esac
 done
 shift `expr $OPTIND - 1`
+
+# If no arguments were supplied to the script.
+if [ "$#" -lt "1" ]; then
+    echo $USAGE
+    exit 1
+fi
 
 # If the destination directory was defined by the user.
 if [ -n "$DESTINATION_DIRECTORY" ]; then
@@ -41,42 +44,31 @@ if [ -n "$DESTINATION_DIRECTORY" ]; then
         exit 1
     fi
     if ! [ -w "$DESTINATION_DIRECTORY" ]; then
-        log_error "$USER does not have write permission on" \
-                  "the following directory: $DESTINATION_DIRECTORY"
+        log_error "$USER does not have write permission on the following directory: $DESTINATION_DIRECTORY"
         log_error "Execution aborted."
         exit 1
     fi
 fi
 
-if [ "$#" -lt "1" ]; then
-    usage #TODO: Correct it.
+#TODO: Test it.
+if ! [ -d "$MANUAL_ROTATIONS_DIR" ]; then
+    echo "$MANUAL_ROTATIONS_DIR does not exist. I will try to create it."
+    mkdir -p "$MANUAL_ROTATIONS_DIR"
+    if [ "$?" -ne "0" ]; then
+        echo "It was not possible to create $MANUAL_ROTATIONS_DIR"
+        echo "Execution aborted."
+        exit 1
+    fi
+    log_info "$MANUAL_ROTATIONS_DIR created!"
+fi
+
+if ! [ -w $MANUAL_ROTATIONS_DIR ]; then
+    echo "$USER does not have write permission on the following directory: $DESTINATION_DIRECTORY"
+    echo "Execution aborted."
     exit 1
 fi
 
-#TODO: Test it.
-if ! [ -d $MANUAL_ROTATIONS_DIR ]; then
-    echo "$MANUAL_ROTATIONS_DIR does not exist. I will try to create it."
-    mkdir -p $MANUAL_ROTATIONS_DIR
-    if [ "$?" -ne "0" ]; then
-        echo -e "It was not possible to create $MANUAL_ROTATIONS_DIR"
-        echo "Execution aborted."
-        exit 1
-    fi
-    echo "$MANUAL_ROTATIONS_DIR created!"
-fi
-
-if ! [ -f $MANUL_ROTATIONS_LOG ]; then
-    echo "$MANUAL_ROTATIONS_LOG does not exist. I will try to create it."
-    touch $MANUAL_ROTATIONS_LOG
-    if [ "$?" -ne "0" ]; then
-        echo "It was not possible to create $MANUAL_ROTATIONS_LOG"
-        echo "Execution aborted."
-        exit 1
-    fi
-    echo "$MANUAL_ROTATIONS_LOG created!"
-fi
-
-FILES=$@
+FILES="$@"
 for FILE in $FILES
 do
     if ! [ -f "$FILE" ]; then
@@ -85,7 +77,8 @@ do
     fi
     
     if [ $(basename "$FILE") = $(basename "$0") ]; then
-        log_error "Forbidden action. I can not rotate myself."
+        log_error "Forbidden action: I cannot rotate myself."
+        continue
     fi
     
     # Check if file type is text.
@@ -116,6 +109,7 @@ do
     # Infinite loop
     while :
     do
+        #TODO: Improve this using globs.
         if ! [ -f "$NEW_FILE.$ROTATION_NUMBER" ] && \
             ! [ -f "$NEW_FILE.$ROTATION_NUMBER.gz" ]; then
             break
@@ -128,6 +122,7 @@ do
     cp "$FILE" "$NEW_FILE"
     if [ "$?" -ne "0" ]; then
         log_error "An error occurred while creating $NEW_FILE"
+        exit 1
     fi
     log_info "File created successfully!"
     
@@ -135,6 +130,7 @@ do
     cat /dev/null > "$FILE"
     if [ "$?" -ne "0" ]; then
         log_error "An error occurred while truncating $FILE"
+        exit 1
     fi
     log_info "File truncated successfully!"
     
@@ -142,6 +138,7 @@ do
     gzip -9v "$NEW_FILE"
     if [ "$?" -ne "0" ]; then
         log_error "An error occurred while compressing $NEW_FILE"
+        exit 1
     fi
 done
 log_info "Execution finished."
