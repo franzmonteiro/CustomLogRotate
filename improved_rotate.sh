@@ -8,7 +8,7 @@ SKIP_FILE_COMPRESSION="off"
 USAGE="usage: $0 -s [-d destination directory] [file ...]"
 
 function log_message() {
-    echo -e "[$(date '+%Y.%m.%d %H:%M:%S') $1] $2" | tee -a $MANUAL_ROTATIONS_LOG
+    echo -e "[$(date '+%Y.%m.%d %H:%M:%S') $1] $2" | tee -a "$MANUAL_ROTATIONS_LOG"
 }
 
 function log_error() {
@@ -120,8 +120,16 @@ do
     done
     NEW_FILE="$NEW_FILE.$ROTATION_NUMBER"
     
-    log_info "Creating file: $NEW_FILE"
-    cp "$FILE" "$NEW_FILE"
+    if [ "$SKIP_FILE_COMPRESSION" = "off" ]; then
+        NEW_FILE="$NEW_FILE.gz"
+        log_info "Creating file: $NEW_FILE"
+        gzip -9cv "$FILE" > "$NEW_FILE"
+    else
+        log_info "File compression skipped."
+        log_info "Creating file: $NEW_FILE"
+        cp "$FILE" "$NEW_FILE"  
+    fi
+    
     if [ "$?" -ne "0" ]; then
         log_error "An error occurred while creating $NEW_FILE"
         exit 1
@@ -135,19 +143,6 @@ do
         exit 1
     fi
     log_info "File truncated successfully!"
-    
-    if [ "$SKIP_FILE_COMPRESSION" = "on" ]; then
-        log_info "File compression skipped."
-        continue
-    fi
-    
-    log_info "Compressing file: $NEW_FILE"
-    gzip -9v "$NEW_FILE"
-    if [ "$?" -ne "0" ]; then
-        log_error "An error occurred while compressing $NEW_FILE"
-        exit 1
-    fi
-    log_info "File compressed successfully!"
 done
 log_info "Execution finished."
 #TODO: Print statistics.
