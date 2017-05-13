@@ -24,7 +24,7 @@ do
         d)    DESTINATION_DIRECTORY="$OPTARG";;
         \?)   # unknown flag
               echo >&2 \
-              echo $USAGE \
+              $USAGE
               exit 1;;
     esac
 done
